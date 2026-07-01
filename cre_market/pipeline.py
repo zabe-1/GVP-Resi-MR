@@ -198,37 +198,59 @@ def run_address(session: CachedSession, address: str, radii: tuple[float, ...],
 
 def _fill_acs_metrics(rr: RadiusResult, new: acs.AcsAggregate,
                       old: acs.AcsAggregate, year: int, prior: int) -> None:
+    from .config import ACS_BLANK_SUPPRESSION_THRESHOLD
+
     rng = f"ACS5 {prior} vs {year}"
     src = "Census ACS 5-year (block groups, centroid-in-radius)"
     rr.n_block_groups = new.n_block_groups
     rr.pct_bg_suppressed = new.pct_bg_suppressed
     rr.n_bg_high_moe = new.n_bg_any_high_moe
 
-    def flag_note(*metric_keys: str) -> str:
-        n_sup = sum(new.suppressed_by_metric.get(k, 0) for k in metric_keys)
-        return f"{n_sup} of {new.n_block_groups} BGs suppressed" if n_sup else ""
+    def suppression_frac(agg: acs.AcsAggregate, *metric_keys: str) -> float:
+        if not agg.n_block_groups:
+            return 1.0
+        worst = max((agg.suppressed_by_metric.get(k, 0) for k in metric_keys),
+                    default=0)
+        return (worst + agg.n_missing_from_api) / agg.n_block_groups
 
+    def checked(value: float | None, *metric_keys: str,
+                current_only: bool = False) -> tuple[float | None, str]:
+        """Blank the value when the underlying data is too suppressed to be
+        reliable; otherwise pass it through with a suppression note."""
+        aggs = (new,) if current_only else (new, old)
+        frac = max(suppression_frac(a, *metric_keys) for a in aggs)
+        if value is None:
+            return None, "no usable ACS data for this metric"
+        if frac > ACS_BLANK_SUPPRESSION_THRESHOLD:
+            return None, (f"left blank: value suppressed in {frac:.0%} of block "
+                          f"groups (threshold {ACS_BLANK_SUPPRESSION_THRESHOLD:.0%})")
+        n_sup = sum(new.suppressed_by_metric.get(k, 0) for k in metric_keys)
+        return value, (f"{n_sup} of {new.n_block_groups} BGs suppressed" if n_sup else "")
+
+    v, note = checked(acs.pct_change(new.population, old.population), "population")
     rr.metrics["population_growth"] = MetricResult(
-        value=acs.pct_change(new.population, old.population), unit="%",
-        source=src, year_range=rng, note=flag_note("population"))
+        value=v, unit="%", source=src, year_range=rng, note=note)
+    v, note = checked(acs.pct_change(new.weighted_median_income,
+                                     old.weighted_median_income), "median_hh_income")
     rr.metrics["hh_income_growth"] = MetricResult(
-        value=acs.pct_change(new.weighted_median_income, old.weighted_median_income),
-        unit="%", source=src + "; household-weighted avg of BG median incomes",
-        year_range=rng, note=flag_note("median_hh_income"))
+        value=v, unit="%",
+        source=src + "; household-weighted avg of BG median incomes",
+        year_range=rng, note=note)
     formations = (new.households - old.households
                   if new.households is not None and old.households is not None else None)
+    v, note = checked(formations, "occupied_units")
     rr.metrics["household_formations"] = MetricResult(
-        value=formations, unit="households",
-        source=src + "; change in occupied housing units", year_range=rng,
-        note=flag_note("occupied_units"))
+        value=v, unit="households",
+        source=src + "; change in occupied housing units", year_range=rng, note=note)
+    v, note = checked(new.employment_rate, "employed", "labor_force",
+                      current_only=True)
     rr.metrics["employment_rate"] = MetricResult(
-        value=new.employment_rate, unit="%",
-        source=src + "; employed / civilian labor force 16+",
-        year_range=f"ACS5 {year}", note=flag_note("employed", "labor_force"))
+        value=v, unit="%", source=src + "; employed / civilian labor force 16+",
+        year_range=f"ACS5 {year}", note=note)
+    v, note = checked(new.pct_bachelors_plus, "pop_25_plus", current_only=True)
     rr.metrics["pct_bachelors_plus"] = MetricResult(
-        value=new.pct_bachelors_plus, unit="%",
-        source=src + "; pop 25+ with bachelor's or higher",
-        year_range=f"ACS5 {year}", note=flag_note("pop_25_plus"))
+        value=v, unit="%", source=src + "; pop 25+ with bachelor's or higher",
+        year_range=f"ACS5 {year}", note=note)
 
 
 def _fill_county_metric(rr: RadiusResult, key: str,

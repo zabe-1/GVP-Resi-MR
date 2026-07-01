@@ -22,7 +22,9 @@ plus one value column depending on the export type:
 Growth is computed inside each radius as latest complete year vs. (latest -
 lookback) year: rent = change in average rent; sales = change in TRANSACTION
 COUNT (volume), with median price change reported alongside.  Record counts
-per radius are always reported so a thin dataset is visible.
+per radius are always reported so a thin dataset is visible, and a growth
+figure whose endpoint years have fewer than MIN_COSTAR_RECORDS_PER_YEAR
+records is left blank rather than reported as if reliable.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from .config import MIN_COSTAR_RECORDS_PER_YEAR
 from .geo import haversine_miles
 
 log = logging.getLogger(__name__)
@@ -128,6 +131,11 @@ def analyze(df: pd.DataFrame, kind: str, lat: float, lon: float,
         m.year_range = f"{old_year}-{new_year}"
         m.n_records_new_year = int((sub["_year"] == new_year).sum())
         m.n_records_old_year = int((sub["_year"] == old_year).sum())
+        if min(m.n_records_new_year, m.n_records_old_year) < MIN_COSTAR_RECORDS_PER_YEAR:
+            m.note = (f"left blank: only {m.n_records_old_year}/{m.n_records_new_year} "
+                      f"records in {old_year}/{new_year} "
+                      f"(need >= {MIN_COSTAR_RECORDS_PER_YEAR} per year)")
+            return m
         m.growth_pct = _pct(by_year[new_year], by_year[old_year])
         m.source += f" — avg {col}"
         return m
@@ -142,6 +150,11 @@ def analyze(df: pd.DataFrame, kind: str, lat: float, lon: float,
     m.year_range = f"{old_year}-{new_year}"
     m.n_records_new_year = int(counts[new_year])
     m.n_records_old_year = int(counts[old_year])
+    if min(m.n_records_new_year, m.n_records_old_year) < MIN_COSTAR_RECORDS_PER_YEAR:
+        m.note = (f"left blank: only {m.n_records_old_year}/{m.n_records_new_year} "
+                  f"sales in {old_year}/{new_year} "
+                  f"(need >= {MIN_COSTAR_RECORDS_PER_YEAR} per year)")
+        return m
     m.growth_pct = _pct(float(counts[new_year]), float(counts[old_year]))
     price_col = _find_column(sub, PRICE_COLUMNS)
     if price_col:

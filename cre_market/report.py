@@ -81,7 +81,10 @@ def _summary_sheet(ws, results, radii):
                 mr = res.radii.get(r) and res.radii[r].metrics.get(key)
                 cell = ws.cell(row_i, base + i)
                 if mr is None or mr.value is None:
-                    cell.value = "n/a"
+                    # Unreliable / unavailable figures are left BLANK (never a
+                    # placeholder number); the shading marks the cell as
+                    # intentionally empty and the comment carries the reason.
+                    cell.value = None
                     cell.fill = FLAG_FILL
                     if mr and mr.note:
                         cell.comment = _comment(mr.note)
@@ -219,8 +222,10 @@ def _methodology_sheet(ws, results, lookback):
         "",
         "Reliability: suppressed ACS values (sentinel codes) are excluded from aggregates "
         "but counted and reported; estimates with CV > 30% are flagged as high-MOE. "
-        "Red cells in the Summary sheet mean no value could be computed — hover the cell "
-        "comment for the reason.",
+        "Figures that cannot be computed reliably are left BLANK in the Summary sheet "
+        "(red-shaded cell; hover the cell comment for the reason). This includes ACS "
+        "aggregates where more than half the block groups were suppressed and CoStar "
+        "growth figures with fewer than 3 records in an endpoint year.",
         "",
         "ACS caveat: 5-year estimates are pooled periods (vintage 2023 = 2019-2023), so a "
         f"{lookback}-year vintage comparison reflects two pooled windows, not two point-in-"

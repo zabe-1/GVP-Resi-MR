@@ -28,6 +28,15 @@ ACS_YEAR_CANDIDATES = (2024, 2023, 2022)
 # (MOE / 1.645 / estimate) exceeds this threshold.
 HIGH_MOE_CV_THRESHOLD = 0.30
 
+# Leave an ACS-derived figure blank when more than this fraction of the
+# radius's block groups had the underlying value suppressed (in either the
+# current or prior vintage) -- the aggregate would be built on too little data.
+ACS_BLANK_SUPPRESSION_THRESHOLD = 0.50
+
+# Leave a CoStar-derived growth figure blank when either endpoint year has
+# fewer than this many records inside the radius.
+MIN_COSTAR_RECORDS_PER_YEAR = 3
+
 # ACS sentinel values that mean "no estimate" (suppressed / not applicable).
 # See https://www.census.gov/data/developers/data-sets/acs-5year/data-notes.html
 ACS_SENTINELS = {

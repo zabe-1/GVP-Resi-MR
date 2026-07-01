@@ -37,7 +37,7 @@ dedicated sheets:
 
 | Sheet | Contents |
 |---|---|
-| **Summary** | One row per address. For each of the 9 metrics: 30 / 15 / 5-mile values plus a *Source / Years* column. CoStar-sourced cells are shaded yellow; missing values show `n/a` shaded red with the reason in a cell comment. Provenance is never ambiguous. |
+| **Summary** | One row per address. For each of the 9 metrics: 30 / 15 / 5-mile values plus a *Source / Years* column. CoStar-sourced cells are shaded yellow. Figures that can't be computed **reliably are left blank** (red-shaded cell, reason in a cell comment) — never a placeholder value. Provenance is never ambiguous. |
 | **Coverage & Quality** | Per address × radius: block groups included, % with suppressed ACS data, high-MOE counts, counties touched, CoStar record counts per radius. |
 | **Block Groups** | Every block group included per address (both ACS vintages), with distance from the point and which radii it falls in. |
 | **Counties** | The per-county values behind every county-level figure (QCEW employment, permits, FMR, HPI) with the population weights used. |
@@ -84,6 +84,13 @@ the selected block-group centroids colored by radius.
    are excluded from aggregates but *counted and reported*, never silently
    dropped. Estimates with CV > 30 % (MOE ÷ 1.645 ÷ estimate) are flagged
    high-MOE. Both appear per radius in Coverage & Quality.
+7. **Blank-if-unreliable**: any figure that can't be computed reliably is
+   left **blank** in the Summary sheet (red shading + reason in a cell
+   comment). This covers: source unavailable/failed, ACS aggregates where the
+   underlying value was suppressed in > 50 % of block groups (in either
+   vintage; `ACS_BLANK_SUPPRESSION_THRESHOLD`), and CoStar growth whose
+   endpoint years have < 3 records in the radius
+   (`MIN_COSTAR_RECORDS_PER_YEAR`, both in `cre_market/config.py`).
 
 **ACS caveat**: 5-year estimates are pooled periods. Comparing vintage 2023
 (2019–2023) to 2018 (2014–2018) compares two non-overlapping pooled windows —

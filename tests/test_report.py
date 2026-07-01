@@ -63,7 +63,8 @@ def test_workbook_marks_missing_and_costar(tmp_path):
         header_starts[label] = col
         col += 4
     jg = header_starts["Job Growth (5yr, %)"]
-    assert ws.cell(3, jg).value == "n/a"
+    assert ws.cell(3, jg).value is None            # unreliable -> blank cell
+    assert ws.cell(3, jg).comment is not None      # reason kept as comment
     rg = header_starts["Rental Rate Growth (5yr, %)"]
     assert ws.cell(3, rg).value == 21.0
     assert "CoStar" in ws.cell(3, rg + 3).value      # source column labels it

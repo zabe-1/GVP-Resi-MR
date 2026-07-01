@@ -32,8 +32,9 @@ def test_load_parses_date_column(tmp_path):
 def test_rent_growth_filters_by_radius(tmp_path):
     rows = []
     for year, rent in ((2019, 1000), (2024, 1250)):
-        rows.append({"Latitude": NEAR[0], "Longitude": NEAR[1],
-                     "Year": year, "Effective Rent/Unit": rent})
+        for _ in range(3):  # >= MIN_COSTAR_RECORDS_PER_YEAR
+            rows.append({"Latitude": NEAR[0], "Longitude": NEAR[1],
+                         "Year": year, "Effective Rent/Unit": rent})
         # far-away comps must be excluded even though they're in the export
         rows.append({"Latitude": FAR[0], "Longitude": FAR[1],
                      "Year": year, "Effective Rent/Unit": 99999})
@@ -41,9 +42,30 @@ def test_rent_growth_filters_by_radius(tmp_path):
     df = load_costar_file(p)
     m = analyze(df, "rent", CENTER[0], CENTER[1], radius_miles=5,
                 lookback=5, source_file=p)
-    assert m.n_records_in_radius == 2
+    assert m.n_records_in_radius == 6
     assert abs(m.growth_pct - 25.0) < 0.01
     assert m.year_range == "2019-2024"
+
+
+def test_thin_rent_data_left_blank(tmp_path):
+    rows = [{"Latitude": NEAR[0], "Longitude": NEAR[1], "Year": y,
+             "Effective Rent/Unit": r} for y, r in ((2019, 1000), (2024, 1250))]
+    p = _write(tmp_path, "thin.csv", pd.DataFrame(rows))
+    m = analyze(load_costar_file(p), "rent", CENTER[0], CENTER[1], 5, 5, p)
+    assert m.growth_pct is None            # 1 record per endpoint year: blank
+    assert "left blank" in m.note
+    assert m.n_records_in_radius == 2      # thinness still visible
+
+
+def test_thin_sales_data_left_blank(tmp_path):
+    rows = ([{"Latitude": NEAR[0], "Longitude": NEAR[1], "Year": 2019,
+              "Sale Price": 300000}] * 2 +
+            [{"Latitude": NEAR[0], "Longitude": NEAR[1], "Year": 2024,
+              "Sale Price": 400000}] * 5)
+    p = _write(tmp_path, "thin_sales.csv", pd.DataFrame(rows))
+    m = analyze(load_costar_file(p), "home_sales", CENTER[0], CENTER[1], 5, 5, p)
+    assert m.growth_pct is None            # only 2 sales in the old year
+    assert "left blank" in m.note
 
 
 def test_sales_volume_growth(tmp_path):
