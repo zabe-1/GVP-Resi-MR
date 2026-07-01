@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.cre_market_cache/
+*.xlsx
+!examples/*.xlsx
+*_map.png
+.pytest_cache/
+.venv/

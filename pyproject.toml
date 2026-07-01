@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cre-market-research"
+version = "0.1.0"
+description = "CRE market research CLI: government-data-first market metrics by radius"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28",
+    "pandas>=1.5",
+    "openpyxl>=3.1",
+    "matplotlib>=3.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+cre-market = "cre_market.cli:main"
+
+[tool.setuptools]
+packages = ["cre_market"]
