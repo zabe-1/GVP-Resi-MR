@@ -73,15 +73,28 @@ def run_address(session: CachedSession, address: str, radii: tuple[float, ...],
                 lookback: int, census_key: str | None, hud_key: str | None,
                 acs_year: int | None,
                 costar_files: dict[str, str] | None = None,
-                name: str = "") -> AddressResult:
-    """costar_files: {'rent': path, 'home_sales': path, 'new_home_sales': path}"""
+                name: str = "", lat: float | None = None,
+                lon: float | None = None) -> AddressResult:
+    """costar_files: {'rent': path, 'home_sales': path, 'new_home_sales': path}
+
+    When lat/lon are supplied (e.g. the Census Geocoder doesn't know a
+    new-construction address), geocoding is skipped and the provided point is
+    used; the output labels the address as user-located."""
     result = AddressResult(address=address, name=name)
-    try:
-        gc = geo.geocode(session, address)
-    except Exception as exc:
-        result.error = f"geocoding failed: {exc}"
-        log.error("%s: %s", address, result.error)
-        return result
+    if lat is not None and lon is not None:
+        gc = geo.GeocodeResult(
+            input_address=address,
+            matched_address=f"{address} (provided coordinates)",
+            lat=lat, lon=lon, state_fips="", county_fips="",
+            tract="", block_group="")
+    else:
+        try:
+            gc = geo.geocode(session, address)
+        except Exception as exc:
+            result.error = (f"geocoding failed: {exc} — add latitude/longitude "
+                            "columns to the input CSV to locate this address manually")
+            log.error("%s: %s", address, result.error)
+            return result
     result.matched_address, result.lat, result.lon = gc.matched_address, gc.lat, gc.lon
 
     max_radius = max(radii)

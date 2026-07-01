@@ -52,7 +52,10 @@ the selected block-group centroids colored by radius.
 ## Block-group aggregation approach
 
 1. **Geocode** each address with the Census Geocoder
-   (`geocoding.geo.census.gov`, free, no key) → lat/lon + FIPS.
+   (`geocoding.geo.census.gov`, free, no key) → lat/lon + FIPS. The Census
+   address database can miss new-construction addresses; the batch CSV
+   accepts optional `latitude`/`longitude` columns that skip geocoding for
+   that row (the output labels the point as user-provided).
 2. **Select block groups by centroid-in-radius**: query TIGERweb for all
    block groups in a bounding box around the point, compute the haversine
    distance from the address to each block group's *internal point*, keep
