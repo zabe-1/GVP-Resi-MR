@@ -69,7 +69,7 @@ def _summary_sheet(ws, results, radii):
         col += span
 
     for row_i, res in enumerate(results, start=3):
-        ws.cell(row_i, 1, res.matched_address or res.address)
+        ws.cell(row_i, 1, _label(res))
         if res.error:
             c = ws.cell(row_i, 2, f"ERROR: {res.error}")
             c.fill = FLAG_FILL
@@ -109,6 +109,10 @@ def _summary_sheet(ws, results, radii):
     ws.freeze_panes = "B3"
 
 
+def _label(res) -> str:
+    base = res.matched_address or res.address
+    return f"{res.name} — {base}" if res.name else base
+
 def _comment(text: str):
     from openpyxl.comments import Comment
     return Comment(text[:700], "cre-market")
@@ -127,7 +131,7 @@ def _coverage_sheet(ws, results, radii):
             rr = res.radii.get(r)
             if rr is None:
                 continue
-            ws.cell(row, 1, res.matched_address or res.address)
+            ws.cell(row, 1, _label(res))
             ws.cell(row, 2, r)
             ws.cell(row, 3, rr.n_block_groups)
             ws.cell(row, 4, round(rr.pct_bg_suppressed, 1))
@@ -152,7 +156,7 @@ def _block_groups_sheet(ws, results, radii):
             for bg in bgs:
                 within = [f"{r:g}" for r in sorted(radii)
                           if bg.distance_miles <= r]
-                ws.cell(row, 1, res.matched_address or res.address)
+                ws.cell(row, 1, _label(res))
                 ws.cell(row, 2, f"{res.acs_year} ({label})" if label == "current"
                         else f"prior vintage")
                 ws.cell(row, 3, bg.geoid)
@@ -175,7 +179,7 @@ def _counties_sheet(ws, results):
     row = 2
     for res in results:
         for rec in res.county_detail:
-            ws.cell(row, 1, res.matched_address or res.address)
+            ws.cell(row, 1, _label(res))
             for j, k in enumerate(all_keys, start=2):
                 v = rec.get(k)
                 ws.cell(row, j, round(v, 2) if isinstance(v, float) else v)

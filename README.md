@@ -19,7 +19,8 @@ cre-market --address "123 Main St, Houston, TX 77002" \
     --costar-home-sales sales_export.xlsx \
     -o houston.xlsx
 
-# batch of addresses (CSV, see examples/batch_template.csv)
+# batch of addresses (CSV with address + optional name and per-property
+# CoStar file columns; see examples/batch_template.csv)
 cre-market --input properties.csv -o portfolio.xlsx
 ```
 

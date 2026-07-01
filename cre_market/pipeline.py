@@ -36,6 +36,7 @@ class RadiusResult:
 @dataclass
 class AddressResult:
     address: str
+    name: str = ""              # optional asset/property name for display
     matched_address: str = ""
     lat: float = 0.0
     lon: float = 0.0
@@ -71,9 +72,10 @@ METRIC_LABELS = {
 def run_address(session: CachedSession, address: str, radii: tuple[float, ...],
                 lookback: int, census_key: str | None, hud_key: str | None,
                 acs_year: int | None,
-                costar_files: dict[str, str] | None = None) -> AddressResult:
+                costar_files: dict[str, str] | None = None,
+                name: str = "") -> AddressResult:
     """costar_files: {'rent': path, 'home_sales': path, 'new_home_sales': path}"""
-    result = AddressResult(address=address)
+    result = AddressResult(address=address, name=name)
     try:
         gc = geo.geocode(session, address)
     except Exception as exc:

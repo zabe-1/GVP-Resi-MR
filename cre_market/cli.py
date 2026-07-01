@@ -41,8 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
     src.add_argument("--address", action="append", default=[],
                      help="property address (repeatable)")
     src.add_argument("--input", metavar="CSV",
-                     help="batch CSV: address[,costar_rent,costar_home_sales,"
-                          "costar_new_home_sales] (file-path columns optional)")
+                     help="batch CSV: address[,name,costar_rent,costar_home_sales,"
+                          "costar_new_home_sales] (all but address optional)")
     for kind in COSTAR_KINDS:
         src.add_argument(f"--costar-{kind.replace('_', '-')}", metavar="FILE",
                          dest=f"costar_{kind}",
@@ -75,18 +75,21 @@ def load_batch(path: str) -> list[dict]:
         addr_col = cols.get("address") or (reader.fieldnames or [None])[0]
         if not addr_col:
             raise SystemExit(f"{path}: no columns found")
+        name_col = (cols.get("name") or cols.get("asset name")
+                    or cols.get("property name"))
         base_dir = os.path.dirname(os.path.abspath(path))
         for row in reader:
             address = (row.get(addr_col) or "").strip()
             if not address:
                 continue
+            name = (row.get(name_col) or "").strip() if name_col else ""
             costar = {}
             for kind in COSTAR_KINDS:
                 col = cols.get(f"costar_{kind}")
                 val = (row.get(col) or "").strip() if col else ""
                 if val:
                     costar[kind] = val if os.path.isabs(val) else os.path.join(base_dir, val)
-            jobs.append({"address": address, "costar": costar})
+            jobs.append({"address": address, "name": name, "costar": costar})
     return jobs
 
 
@@ -102,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
     for addr in args.address:
         costar = {k: getattr(args, f"costar_{k}") for k in COSTAR_KINDS
                   if getattr(args, f"costar_{k}")}
-        jobs.append({"address": addr, "costar": costar})
+        jobs.append({"address": addr, "name": "", "costar": costar})
     if not jobs:
         print("error: provide --address or --input", file=sys.stderr)
         return 2
@@ -128,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
         log.info("processing: %s", job["address"])
         res = run_address(session, job["address"], radii, args.lookback,
                           census_key, hud_key, args.acs_year,
-                          costar_files=job["costar"])
+                          costar_files=job["costar"], name=job.get("name", ""))
         results.append(res)
         if args.plot and not res.error and res.block_groups_current:
             from .plotting import plot_address
